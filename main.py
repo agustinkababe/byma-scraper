@@ -6,6 +6,7 @@ import pandas as pd
 import io
 from datetime import datetime
 import secrets
+import certifi
 
 app = FastAPI()
 
@@ -43,7 +44,7 @@ async def generate_csv(credentials: HTTPBasicCredentials = Depends(authenticate)
         "User-Agent": "Mozilla/5.0"
     }
 
-    response = requests.post(url, json=body, headers=headers)
+    response = requests.post(url, json=body, headers=headers, verify=certifi.where())
 
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"Error al obtener datos de BYMA: {response.status_code}")
