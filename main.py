@@ -8,7 +8,18 @@ from datetime import datetime
 import secrets
 import certifi
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # o especificá ["http://localhost:5173"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Configuración de usuario y contraseña
 USERNAME = "nachi"
