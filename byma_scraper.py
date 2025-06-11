@@ -36,6 +36,8 @@ def obtener_bonos_y_guardar_csv():
     rows = []
     for item in data:
         trade = item.get("trade")
+        # print(f"{item.get('symbol')} - raw trade: {trade} ({type(trade)})")
+
         try:
             trade_val = float(trade) if trade is not None else 0.0
         except ValueError:
