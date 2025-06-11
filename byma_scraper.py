@@ -35,11 +35,18 @@ def obtener_bonos_y_guardar_csv():
     # Procesar data
     rows = []
     for item in data:
-        rows.append({
-            "symbol": item.get("symbol"),
-            "trade": item.get("trade"),
-            "date": datetime.now().strftime('%Y-%m-%d')
-        })
+        trade = item.get("trade")
+        try:
+            trade_val = float(trade) if trade is not None else 0.0
+        except ValueError:
+            trade_val = 0.0
+
+        if trade_val > 0:
+            rows.append({
+                "symbol": item.get("symbol"),
+                "trade": trade,
+                "date": datetime.now().strftime('%Y-%m-%d')
+            })
 
     df = pd.DataFrame(rows)
     archivo_salida = "bonos_byma.csv"
