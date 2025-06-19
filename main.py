@@ -110,7 +110,8 @@ async def fetch_data(symbol: str, client: httpx.AsyncClient):
             cotizacion_response = await client.post(COTIZACION_URL, json=cotizacion_payload, headers=headers)
             cotizacion_response.raise_for_status()
             cotizacion_data = cotizacion_response.json()["data"][0]
-            trade = cotizacion_data.get("trade", "N/A")
+            trade_val = cotizacion_data.get("trade", None)
+            trade = round(trade_val / 100, 2) if isinstance(trade_val, (int, float)) else "N/A"
             break
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 503:
