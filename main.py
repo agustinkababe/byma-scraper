@@ -145,19 +145,34 @@ async def upload_csv(file: UploadFile = File(...), username: str = Depends(get_c
 
     logging.info(f"{username} inició proceso para {len(symbols)} símbolos.")
 
+    logs = []  # acumulamos logs de error por símbolo
     results = []
+
     async with httpx.AsyncClient(timeout=10) as client:
-        tasks = [fetch_data(symbol, client) for symbol in symbols]
-        results = await asyncio.gather(*tasks)
+        for symbol in symbols:
+            try:
+                result = await fetch_data(symbol, client)
+                results.append(result)
+            except Exception as e:
+                logs.append(f"[{symbol}] Error crítico: {e}")
+                results.append({
+                    "fecha": datetime.now().strftime("%Y-%m-%d"),
+                    "symbol": symbol,
+                    "formaAmortizacion": "ERROR",
+                    "interes": "ERROR",
+                    "fechaEmision": "ERROR",
+                    "trade": "ERROR"
+                })
 
     output_df = pd.DataFrame(results)
     output = io.StringIO()
     output_df.to_csv(output, index=False)
     output.seek(0)
 
-    logging.info("Proceso finalizado correctamente.")
-    return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=bonos_output.csv"}
-    )
+    # Agregar CSV y log como respuesta JSON combinada (temporalmente)
+    return {
+        "message": "CSV generado",
+        "log": logs,
+        "csv": output.getvalue()
+    }
+
