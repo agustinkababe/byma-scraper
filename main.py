@@ -10,13 +10,19 @@ import io
 import httpx
 import asyncio
 import logging
+import sys
 
 # Configuración de logging
 logging.basicConfig(
-    filename="byma_scraper.log",
+    stream=sys.stdout,
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
+# logging.basicConfig(
+#    filename="byma_scraper.log",
+#    level=logging.INFO,
+#    format="%(asctime)s - %(levelname)s - %(message)s"
+#)
 
 # Inicializar app FastAPI
 app = FastAPI()
