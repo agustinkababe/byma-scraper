@@ -1,10 +1,12 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
+
 import pandas as pd
 import io
 import httpx
 import asyncio
-from datetime import datetime
 import logging
 
 # Configuración de logging
@@ -15,6 +17,14 @@ logging.basicConfig(
 )
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # en producción podés restringirlo a tu dominio específico
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 GENERAL_URL = "https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free/bnown/fichatecnica/especies/general"
 COTIZACION_URL = "https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free/bnown/fichatecnica/especies/cotizacion"
@@ -126,7 +136,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 fake_users_db = {
     "agustin": {
         "username": "agustin",
-        "password": "1234"  # en producción usá hash
+        "password": "1234"
+    },
+    "nachi": {
+        "username": "nachi",
+        "password": "Mumina1117!"
     }
 }
 
