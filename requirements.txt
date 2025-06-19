@@ -5,3 +5,4 @@ pandas
 certifi
 httpx
 python-jose[cryptography]
+python-multipart
