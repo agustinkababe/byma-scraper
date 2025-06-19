@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-requests
 pandas
 certifi
 httpx

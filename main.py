@@ -12,17 +12,12 @@ import asyncio
 import logging
 import sys
 
-# Configuración de logging
+# Configuración de logging a consola
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
-# logging.basicConfig(
-#    filename="byma_scraper.log",
-#    level=logging.INFO,
-#    format="%(asctime)s - %(levelname)s - %(message)s"
-#)
 
 # Inicializar app FastAPI
 app = FastAPI()
@@ -30,7 +25,7 @@ app = FastAPI()
 # Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Reemplazá con el dominio de tu frontend si querés restringir
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,7 +73,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    access_token = create_access_token(data={"sub": user["username"]}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = create_access_token(
+        data={"sub": user["username"]},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 # URLs internas de BYMA
@@ -95,8 +93,9 @@ async def fetch_data(symbol: str, client: httpx.AsyncClient):
     fecha_emision = ""
     trade = "N/A"
 
+    # Obtener datos generales
     try:
-        general_response = await client.post(GENERAL_URL, json=general_payload, headers=headers, verify=False)
+        general_response = await client.post(GENERAL_URL, json=general_payload, headers=headers)
         general_response.raise_for_status()
         general_data = general_response.json()["data"][0]
         forma_amortizacion = general_data.get("formaAmortizacion", "")
@@ -105,9 +104,10 @@ async def fetch_data(symbol: str, client: httpx.AsyncClient):
     except Exception as e:
         logging.warning(f"[{symbol}] Error al obtener datos generales: {e}")
 
+    # Intentar cotización hasta 1000 veces
     for attempt in range(1, 1001):
         try:
-            cotizacion_response = await client.post(COTIZACION_URL, json=cotizacion_payload, headers=headers, verify=False)
+            cotizacion_response = await client.post(COTIZACION_URL, json=cotizacion_payload, headers=headers)
             cotizacion_response.raise_for_status()
             cotizacion_data = cotizacion_response.json()["data"][0]
             trade = cotizacion_data.get("trade", "N/A")
@@ -136,7 +136,7 @@ async def fetch_data(symbol: str, client: httpx.AsyncClient):
         "trade": trade
     }
 
-# Endpoint protegido con token
+# Endpoint protegido para carga de CSV
 @app.post("/upload-csv")
 async def upload_csv(file: UploadFile = File(...), username: str = Depends(get_current_user)):
     contents = await file.read()
@@ -146,7 +146,7 @@ async def upload_csv(file: UploadFile = File(...), username: str = Depends(get_c
     logging.info(f"{username} inició proceso para {len(symbols)} símbolos.")
 
     results = []
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=10, verify=False) as client:
         tasks = [fetch_data(symbol, client) for symbol in symbols]
         results = await asyncio.gather(*tasks)
 
