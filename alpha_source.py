@@ -1,81 +1,71 @@
-# alpha_source.py
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends
 from fastapi.responses import StreamingResponse
-from datetime import datetime
+from auth import get_current_user
 import pandas as pd
 import httpx
 import asyncio
 import io
 import logging
-
-from main import get_current_user  # reutilizamos la autenticación del backend principal
+from datetime import datetime
 
 router = APIRouter()
 
 ALPHA_API_KEY = "QJYLXMEEIIEAA5MS"
 ALPHA_URL = "https://www.alphavantage.co/query"
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO)
 
-async def fetch_intraday(symbol: str, client: httpx.AsyncClient):
+async def fetch_alpha(symbol: str, client: httpx.AsyncClient):
     params = {
         "function": "TIME_SERIES_INTRADAY",
         "symbol": symbol,
         "interval": "1min",
-        "apikey": ALPHA_API_KEY,
-        "outputsize": "full"
+        "apikey": ALPHA_API_KEY
     }
 
     try:
         response = await client.get(ALPHA_URL, params=params)
         response.raise_for_status()
         data = response.json()
-        timeseries = data.get("Time Series (1min)", {})
-        
-        if not timeseries:
-            raise ValueError("No hay datos para el símbolo")
 
-        parsed = []
-        for timestamp, values in timeseries.items():
-            dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
-            parsed.append({
+        ts_key = next(k for k in data if "Time Series" in k)
+        time_series = data[ts_key]
+
+        result = []
+        for timestamp, values in time_series.items():
+            fecha, hora = timestamp.split()
+            result.append({
                 "Symbol": symbol,
-                "Fecha": dt.date(),
-                "Hora": dt.time(),
+                "Fecha": fecha,
+                "Hora": hora,
                 "Open": values["1. open"],
                 "High": values["2. high"],
                 "Low": values["3. low"],
                 "Volume": values["5. volume"]
             })
 
-        # filtrar solo la última fecha disponible
-        if parsed:
-            last_date = max([p["Fecha"] for p in parsed])
-            return [p for p in parsed if p["Fecha"] == last_date]
-        else:
-            return []
-
+        return result
     except Exception as e:
-        logging.warning(f"[{symbol}] Error al obtener datos: {e}")
+        logging.error(f"[{symbol}] Error en Alpha Vantage: {e}")
         return []
 
-@router.post("/alpha-source")
-async def alpha_source(file: UploadFile = File(...), username: str = Depends(get_current_user)):
+@router.post("/alpha-csv")
+async def generate_alpha_csv(file: UploadFile = File(...), username: str = Depends(get_current_user)):
     contents = await file.read()
     df = pd.read_csv(io.StringIO(contents.decode("utf-8")))
     symbols = df["symbol"].dropna().unique()
 
-    all_rows = []
-    async with httpx.AsyncClient(timeout=20) as client:
-        tasks = [fetch_intraday(symbol, client) for symbol in symbols]
+    logging.info(f"{username} inició proceso Alpha para {len(symbols)} símbolos.")
+
+    all_data = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        tasks = [fetch_alpha(symbol, client) for symbol in symbols]
         results = await asyncio.gather(*tasks)
-        for r in results:
-            all_rows.extend(r)
 
-    if not all_rows:
-        raise HTTPException(status_code=500, detail="No se pudo recuperar ningún dato.")
+        for result in results:
+            all_data.extend(result)
 
-    output_df = pd.DataFrame(all_rows)
+    output_df = pd.DataFrame(all_data)
     output = io.StringIO()
     output_df.to_csv(output, index=False)
     output.seek(0)
@@ -83,5 +73,5 @@ async def alpha_source(file: UploadFile = File(...), username: str = Depends(get
     return StreamingResponse(
         output,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=alpha_intraday.csv"}
+        headers={"Content-Disposition": "attachment; filename=alpha_output.csv"}
     )

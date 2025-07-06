@@ -1,19 +1,16 @@
-# auth.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 
-router = APIRouter()
-
-# Config JWT
+# Configuración JWT
 SECRET_KEY = "mi-clave-supersecreta"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Base de usuarios
+# Usuarios habilitados
 fake_users_db = {
     "agustin": {"username": "agustin", "password": "1234"},
     "nachi": {"username": "nachi", "password": "Mumina1117!"}
@@ -41,12 +38,3 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return username
     except JWTError:
         raise credentials_exception
-
-# Endpoint de login
-@router.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    access_token = create_access_token(data={"sub": user["username"]}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    return {"access_token": access_token, "token_type": "bearer"}
