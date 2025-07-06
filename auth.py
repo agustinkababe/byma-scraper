@@ -1,16 +1,15 @@
+from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from datetime import datetime, timedelta
 from jose import JWTError, jwt
 
-# Configuración JWT
+# Configuración
 SECRET_KEY = "mi-clave-supersecreta"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Usuarios habilitados
 fake_users_db = {
     "agustin": {"username": "agustin", "password": "1234"},
     "nachi": {"username": "nachi", "password": "Mumina1117!"}
